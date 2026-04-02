@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(md|toml|json\\)$|netlify\")",
+      "Bash(find:*)",
+      "Bash(grep \"\\\\.js$\")",
+      "Bash(gh auth:*)"
+    ]
+  }
+}

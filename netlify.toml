@@ -1,0 +1,23 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NPM_CONFIG_LEGACY_PEER_DEPS = "true"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Edge Functions for streaming (30s timeout instead of 10s)
+[[edge_functions]]
+  path = "/api/generate-presentation-stream"
+  function = "generate-presentation-stream"
+
+# Redirects for regular API
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
