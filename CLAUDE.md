@@ -9,13 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Frontend dev server (with HMR)
+# Frontend dev server (with HMR) — runs on port 5173
 npm run dev
-
-# Backend Express server (port 5000)
-npm run server
-
-# Run both in separate terminals during development
 
 # Build for production
 npm run build
@@ -23,11 +18,12 @@ npm run build
 # Lint
 npm run lint
 
-# Initialize database schema
-npm run init-db
-
 # Preview production build
 npm run preview
+
+# --- Legacy (Node/Express, no longer the active backend) ---
+npm run server    # starts server/server.js on port 5000
+npm run init-db   # runs server/init-db.js to apply SQL schemas
 ```
 
 ## Architecture
@@ -36,9 +32,9 @@ npm run preview
 
 - **Frontend:** Vercel (React/Vite, `npm run build`)
 - **Backend:** Render (Python/FastAPI, `backend/`)
-- **Local development:** Vite (`npm run dev`) proxies `/.netlify/functions/*` and `/api/*` to FastAPI at `localhost:8000`. The old Express server (`server/`) and Netlify Functions (`netlify/`) are legacy — the Python backend is the source of truth.
+- **Local development:** Vite (`npm run dev`) proxies both `/.netlify/functions/*` and `/api/*` to FastAPI at `localhost:8000`. The proxy rewrites Netlify-style function paths to FastAPI routes (see `vite.config.js` — ~28 proxy rules). The old Express server (`server/`) and Netlify Functions (`netlify/`) are **legacy and unused**.
 
-### Running locally
+### Running Locally
 
 ```bash
 # Terminal 1 — Python backend
@@ -52,61 +48,66 @@ npm run dev
 
 ### Frontend (`src/`)
 
-- **Routing:** React Router v7 in `App.jsx`. Protected routes use `src/components/ProtectedRoute.jsx` for role-based access (user/admin).
+- **Routing:** React Router v7 in `App.jsx`. Protected routes use `src/components/ProtectedRoute.jsx` with an optional `allowedRoles` prop for role-based access.
+- **Roles:** `user`, `pro`, `ultra`, `moderator`, `admin`. Premium pages (Presentation, Games) require `pro`/`ultra`/`moderator`/`admin`.
 - **Layouts:** `src/layouts/DashboardLayout.jsx` wraps all authenticated pages.
 - **Global State:** Three contexts in `src/contexts/`:
   - `AuthContext` — user session and data
   - `LanguageContext` — active language (EN/RU/KK)
   - `ThemeContext` — dark/light mode
-- **Translations:** All UI strings in `src/translations/` (single large file). Access via `useTranslations()` hook.
-- **AI Utilities:** Content generation logic lives in `src/utils/` (`aiGeneration.js`, `generateContent.js`, `toolPrompts.js`). These call the backend `/api` endpoints.
+- **Translations:** All UI strings live in `src/translations/` (single large file). Access via `useTranslations()` hook.
+- **AI Utilities:** `src/utils/aiGeneration.js`, `generateContent.js`, `toolPrompts.js` — these call backend `/api` endpoints.
 
 ### Backend (`backend/`)
 
-Python FastAPI app deployed on Render.
+Python FastAPI app deployed on Render. CORS allows `FRONTEND_URL` env var (defaults to `http://localhost:5173`).
 
-- `main.py` — FastAPI entry point, CORS, router registration
+- `main.py` — FastAPI entry point, CORS config, router registration
 - `database.py` — psycopg2 connection pool, `query(sql, params)` helper
-- `email_service.py` — SMTP email sending (mock mode if SMTP not configured)
+- `email_service.py` — SMTP email (falls back to mock/log mode if SMTP not configured)
 - `routers/auth.py` — `/api/auth/{register,login,verify-email,resend-code}`
 - `routers/ai.py` — `/api/ai/{generate-content,generate-presentation,tts,tulga-content}`
 - `routers/presentations.py` — `/api/presentation-api` CRUD
 - `routers/tapqyr.py` — `/api/tapqyr-{quizzes,sessions,players,answer}`
 - `routers/admin.py` — `/api/admin/{stats,users}`
 - `routers/analytics.py` — `/api/analytics`
-
-> The old `server/` (Node/Express) and `netlify/functions/` are legacy and no longer used.
+- Health check: `GET /api/health`
 
 ### Database
 
-PostgreSQL via Neon. Schema SQL files in `server/database/`:
+PostgreSQL via Neon. Schema SQL files in `server/database/` (applied via the legacy `npm run init-db`):
 - `presentation-tables.sql`
 - `tapqyr-tables.sql`
 - `analytics-tables.sql`
 
-Run `npm run init-db` to apply schemas.
-
 ### Key Data Flows
 
-1. **Content Generation:** `src/pages/*.jsx` → `src/utils/aiGeneration.js` → `POST /api/ai/generate` (or Netlify function) → OpenAI API
-2. **Presentation:** `src/pages/Presentation.jsx` → `src/utils/presentationApi.js` → `/api/presentations` → PostgreSQL
-3. **Quiz Game (Tapqyr):** `src/utils/tapqyrApi.js` → `/api/tapqyr/*` → PostgreSQL
+1. **Content Generation:** `src/pages/*.jsx` → `src/utils/aiGeneration.js` → `POST /api/ai/generate-content` → OpenAI API
+2. **Presentation:** `src/pages/Presentation.jsx` → `src/utils/presentationApi.js` → `/api/presentation-api` → PostgreSQL
+3. **Quiz Game (Tapqyr):** `src/utils/tapqyrApi.js` → `/api/tapqyr-*` → PostgreSQL
 
 ## Environment Variables
 
-Required in `.env` (not committed):
+### Backend (`backend/.env`, see `backend/.env.example`)
 ```
-DATABASE_URL=       # Neon PostgreSQL connection string
-PORT=5000
+DATABASE_URL=       # Neon PostgreSQL connection string (sslmode=require)
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
 SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
+FRONTEND_URL=       # e.g. https://your-app.vercel.app (used for CORS)
 ```
 
-For Netlify, these are set in `netlify.toml` and Netlify dashboard environment variables.
+### Frontend (root `.env`)
+No build-time env vars required — all API calls are proxied through Vite in dev and hit the Render backend URL directly in production.
 
 ## Styling
 
 Tailwind CSS 4 with custom theme extensions in `tailwind.config.js` (colors, fonts, shadows). PostCSS processes styles via `postcss.config.js`. CSS linting is suppressed in `.vscode/settings.json` to avoid Tailwind directive warnings.
+
+## Testing
+
+There is no active test suite. Two legacy test scripts exist in `server/` (`test-auth.js`, `test-db-connection.js`) but they target the old Express backend.
