@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getTranslation } from '../translations/translations';
 import { Link, useNavigate } from 'react-router-dom';
 import { trackAnalyticsEvent, ANALYTICS_EVENTS } from '../hooks/useAnalytics';
+import { API_BASE } from '../utils/api';
 
 const Register = () => {
     const { language } = useLanguage();
@@ -29,7 +30,7 @@ const Register = () => {
 
         try {
             const normalizedEmail = email.toLowerCase().trim();
-            const response = await fetch('/.netlify/functions/register', {
+            const response = await fetch(`${API_BASE}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: normalizedEmail, password }),

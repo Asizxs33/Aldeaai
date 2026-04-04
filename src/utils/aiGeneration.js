@@ -2,6 +2,7 @@
  * AI Content Generation Service
  * Generate presentation slide content using AI with Edge Function streaming
  */
+import { API_BASE as _BASE } from './api';
 
 /**
  * Generate presentation slide content using AI
@@ -23,9 +24,7 @@ export const generateSlideContent = async (
 ) => {
     // Try Edge Function streaming first (30s timeout), then fallback to regular function
     const streamEndpoint = '/api/generate-presentation-stream';
-    const regularEndpoint = import.meta.env.DEV
-        ? 'http://localhost:5000/api/ai/generate-presentation'
-        : '/.netlify/functions/generate-presentation';
+    const regularEndpoint = `${_BASE}/api/ai/generate-presentation`;
 
     // Get userId for subscription check
     let userId = null;
@@ -131,9 +130,7 @@ export const generateSlideContentWithProgress = async (options, onProgress) => {
     const { topic, slideCount, language, presentationType, ktp, uploadedImages = [] } = options;
 
     const streamEndpoint = '/api/generate-presentation-stream';
-    const regularEndpoint = import.meta.env.DEV
-        ? 'http://localhost:5000/api/ai/generate-presentation'
-        : '/.netlify/functions/generate-presentation';
+    const regularEndpoint = `${_BASE}/api/ai/generate-presentation`;
 
     let userId = null;
     try {

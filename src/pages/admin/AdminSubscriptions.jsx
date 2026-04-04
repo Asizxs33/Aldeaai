@@ -4,6 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTranslation } from '../../translations/translations';
 import { CreditCard, Crown, Star, User, Search, ChevronDown, RefreshCw, CheckCircle } from 'lucide-react';
+import { API_BASE } from '../../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminSubscriptions = () => {
@@ -26,7 +27,7 @@ const AdminSubscriptions = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/.netlify/functions/admin-users');
+            const res = await fetch(`${API_BASE}/api/admin/users`);
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
             setUsers(data.users || []);
@@ -44,7 +45,7 @@ const AdminSubscriptions = () => {
     const updatePlan = async (userId, newPlan) => {
         setUpdatingId(userId);
         try {
-            const res = await fetch('/.netlify/functions/admin-users', {
+            const res = await fetch(`${API_BASE}/api/admin/users`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, role: newPlan })

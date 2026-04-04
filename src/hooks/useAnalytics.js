@@ -3,13 +3,14 @@
 //        trackEvent('presentation_created', { topic: 'Math' });
 
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE } from '../utils/api';
 
 export const useAnalytics = () => {
     const { user } = useAuth();
 
     const trackEvent = async (eventType, eventData = null) => {
         try {
-            await fetch('/.netlify/functions/analytics', {
+            await fetch(`${API_BASE}/api/analytics`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -29,7 +30,7 @@ export const useAnalytics = () => {
 // Standalone function for use outside React components
 export const trackAnalyticsEvent = async (eventType, eventData = null, userId = null) => {
     try {
-        await fetch('/.netlify/functions/analytics', {
+        await fetch(`${API_BASE}/api/analytics`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, eventType, eventData })

@@ -4,6 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTranslation } from '../../translations/translations';
 import { Users, Crown, Shield, Star, User, Trash2, RefreshCw, Search, ChevronDown } from 'lucide-react';
+import { API_BASE } from '../../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminUsers = () => {
@@ -26,7 +27,7 @@ const AdminUsers = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/.netlify/functions/admin-users');
+            const res = await fetch(`${API_BASE}/api/admin/users`);
             if (!res.ok) throw new Error('Failed to fetch users');
             const data = await res.json();
             setUsers(data.users);
@@ -45,7 +46,7 @@ const AdminUsers = () => {
     const updateRole = async (userId, newRole) => {
         setUpdatingId(userId);
         try {
-            const res = await fetch('/.netlify/functions/admin-users', {
+            const res = await fetch(`${API_BASE}/api/admin/users`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, role: newRole })
@@ -62,7 +63,7 @@ const AdminUsers = () => {
     const deleteUser = async (userId) => {
         if (!confirm('Бұл пайдаланушыны жою керек пе?')) return;
         try {
-            const res = await fetch('/.netlify/functions/admin-users', {
+            const res = await fetch(`${API_BASE}/api/admin/users`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId })

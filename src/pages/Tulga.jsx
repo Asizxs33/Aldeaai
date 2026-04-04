@@ -4,6 +4,7 @@ import { getTranslation } from '../translations/translations';
 import { Mic, Video, Play, Download, Edit, RefreshCw, ArrowLeft, Sparkles, User, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { saveHistoryItem } from '../utils/historyStorage';
+import { API_BASE } from '../utils/api';
 
 const Tulga = () => {
     const { language } = useLanguage();
@@ -74,9 +75,7 @@ const Tulga = () => {
 
         try {
             // Use Netlify Functions path
-            const apiUrl = '/.netlify/functions';
-
-            const response = await fetch(`${apiUrl}/ai-tulga-content`, {
+            const response = await fetch(`${API_BASE}/api/ai/tulga-content`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -125,10 +124,7 @@ const Tulga = () => {
         try {
             const voice = characterVoices[selectedCharacter.id] || 'alloy';
 
-            // Use Netlify Functions path
-            const apiUrl = '/.netlify/functions';
-
-            const response = await fetch(`${apiUrl}/ai-tts`, {
+            const response = await fetch(`${API_BASE}/api/ai/tts`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

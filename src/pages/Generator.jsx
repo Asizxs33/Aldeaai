@@ -5,6 +5,7 @@ import { ChevronLeft, Sparkles, Send, Copy, ThumbsUp, ThumbsDown, RefreshCw, Wan
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation } from '../translations/translations';
 import { saveHistoryItem } from '../utils/historyStorage';
+import { API_BASE } from '../utils/api';
 import { generateContent } from '../utils/generateContent';
 import { exportToWord, exportToExcel, printContent, copyToClipboard, markdownToHtml } from '../utils/exportContent';
 import UpgradeModal from '../components/UpgradeModal';
@@ -105,9 +106,7 @@ const Generator = () => {
         setIsGeneratingAudio(true);
 
         try {
-            const apiUrl = '/.netlify/functions';
-
-            const response = await fetch(`${apiUrl}/ai-tts`, {
+            const response = await fetch(`${API_BASE}/api/ai/tts`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

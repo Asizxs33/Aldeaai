@@ -2,6 +2,7 @@
  * Generate content for tools using AI
  */
 import { generateToolPrompt } from './toolPrompts';
+import { API_BASE as _BASE } from './api';
 
 /**
  * Generate content for a tool
@@ -21,13 +22,8 @@ export const generateContent = async (toolId, topic, subjectTitle, grade, langua
         showExplanations
     });
 
-    const API_BASE = import.meta.env.DEV
-        ? 'http://localhost:5000/api'
-        : '/.netlify/functions';
-
-    const endpoint = import.meta.env.DEV
-        ? '/ai/generate-content'
-        : '/generate-content';
+    const API_BASE = `${_BASE}/api`;
+    const endpoint = '/ai/generate-content';
 
     // Get user ID from localStorage
     let userId = null;

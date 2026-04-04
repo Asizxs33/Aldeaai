@@ -4,6 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTranslation } from '../../translations/translations';
 import { BarChart3, TrendingUp, Users, Zap, Clock, Calendar, PieChart, RefreshCw, AlertCircle } from 'lucide-react';
+import { API_BASE } from '../../utils/api';
 import { motion } from 'framer-motion';
 import { ANALYTICS_EVENTS } from '../../hooks/useAnalytics';
 
@@ -25,7 +26,7 @@ const AdminAnalytics = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('/.netlify/functions/analytics');
+            const res = await fetch(`${API_BASE}/api/analytics`);
             if (!res.ok) throw new Error('Failed to fetch analytics');
             const data = await res.json();
             setAnalytics(data);

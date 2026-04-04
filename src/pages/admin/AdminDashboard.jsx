@@ -4,6 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTranslation } from '../../translations/translations';
 import { BarChart3, Users, TrendingUp, Calendar, Crown, Shield, User, Star, RefreshCw } from 'lucide-react';
+import { API_BASE } from '../../utils/api';
 import { motion } from 'framer-motion';
 
 const AdminDashboard = () => {
@@ -24,7 +25,7 @@ const AdminDashboard = () => {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/.netlify/functions/admin-stats');
+            const res = await fetch(`${API_BASE}/api/admin/stats`);
             if (!res.ok) throw new Error('Failed to fetch stats');
             const data = await res.json();
             setStats(data);

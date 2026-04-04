@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getTranslation } from '../translations/translations';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { trackAnalyticsEvent, ANALYTICS_EVENTS } from '../hooks/useAnalytics';
+import { API_BASE } from '../utils/api';
 
 const Login = () => {
     const { language } = useLanguage();
@@ -31,7 +32,7 @@ const Login = () => {
         try {
             // Use relative path for Netlify Functions or absolute for localhost fallback if needed
             // For production on Netlify, relative path is best: '/.netlify/functions/login'
-            const response = await fetch('/.netlify/functions/login', {
+            const response = await fetch(`${API_BASE}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),

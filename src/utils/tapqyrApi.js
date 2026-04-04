@@ -1,5 +1,6 @@
 // API utility for Aldea Tapqyr
-const API_BASE = '/.netlify/functions';
+import { API_BASE as _BASE } from './api';
+const API_BASE = `${_BASE}/api`;
 
 // ==================== QUIZZES ====================
 export const quizzesApi = {

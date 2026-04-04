@@ -1,6 +1,5 @@
-const API_BASE = import.meta.env.DEV 
-    ? 'http://localhost:5000/api' 
-    : '/.netlify/functions';
+import { API_BASE as _BASE } from './api';
+const API_BASE = `${_BASE}/api`;
 
 export const presentationApi = {
     // Get all presentations for a user

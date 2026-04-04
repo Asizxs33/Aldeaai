@@ -4,6 +4,7 @@ import { Mail, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation } from '../translations/translations';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE } from '../utils/api';
 
 const VerifyEmail = () => {
     const { language } = useLanguage();
@@ -67,7 +68,7 @@ const VerifyEmail = () => {
         setError('');
         try {
             const normalizedEmail = email.toLowerCase().trim();
-            const response = await fetch('/.netlify/functions/resend-code', {
+            const response = await fetch(`${API_BASE}/api/auth/resend-code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: normalizedEmail }),
@@ -104,7 +105,7 @@ const VerifyEmail = () => {
         setIsVerifying(true);
         try {
             const normalizedEmail = email.toLowerCase().trim();
-            const response = await fetch('/.netlify/functions/verify-email', {
+            const response = await fetch(`${API_BASE}/api/auth/verify-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: normalizedEmail, code: verificationCode }),
