@@ -32,7 +32,8 @@ npm run init-db   # runs server/init-db.js to apply SQL schemas
 
 - **Frontend:** Vercel (React/Vite, `npm run build`)
 - **Backend:** Render (Python/FastAPI, `backend/`)
-- **Local development:** Vite (`npm run dev`) proxies both `/.netlify/functions/*` and `/api/*` to FastAPI at `localhost:8000`. The proxy rewrites Netlify-style function paths to FastAPI routes (see `vite.config.js` — ~28 proxy rules). The old Express server (`server/`) and Netlify Functions (`netlify/`) are **legacy and unused**.
+- **Local development:** Vite (`npm run dev`) proxies both `/.netlify/functions/*` and `/api/*` to FastAPI at `localhost:8000`. The proxy rewrites Netlify-style function paths to FastAPI routes (see `vite.config.js` — ~17 proxy rules). The old Express server (`server/`) and Netlify Functions (`netlify/`) are **legacy and unused**.
+- **Render config:** `render.yaml` at repo root defines the backend service (`rootDir: backend`, start: `python3 -m uvicorn main:app --host 0.0.0.0 --port $PORT`).
 
 ### Running Locally
 
@@ -57,6 +58,7 @@ npm run dev
   - `ThemeContext` — dark/light mode
 - **Translations:** All UI strings live in `src/translations/` (single large file). Access via `useTranslations()` hook.
 - **AI Utilities:** `src/utils/aiGeneration.js`, `generateContent.js`, `toolPrompts.js` — these call backend `/api` endpoints.
+- **History:** `src/utils/historyStorage.js` — persists generated content history in localStorage.
 
 ### Backend (`backend/`)
 
