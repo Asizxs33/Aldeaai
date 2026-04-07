@@ -1,12 +1,19 @@
 import random
+import bcrypt
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from passlib.context import CryptContext
 import database
 from email_service import send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 def generate_code() -> str:
@@ -43,7 +50,7 @@ def register(body: RegisterBody):
     if existing:
         raise HTTPException(400, "User already exists")
 
-    hashed = pwd_ctx.hash(body.password)
+    hashed = hash_password(body.password)
     code = generate_code()
 
     if body.name:
@@ -69,7 +76,7 @@ def login(body: LoginBody):
         raise HTTPException(400, "Invalid credentials")
 
     user = rows[0]
-    if not pwd_ctx.verify(body.password, user["password"]):
+    if not verify_password(body.password, user["password"]):
         raise HTTPException(400, "Invalid credentials")
 
     if not user.get("email_verified"):
