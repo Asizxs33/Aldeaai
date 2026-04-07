@@ -18,7 +18,7 @@ def log_event(body: EventBody):
     if not body.eventType:
         raise HTTPException(400, "eventType is required")
     database.query(
-        "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES ($1, $2, $3)",
+        "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (%s, %s, %s)",
         (body.userId, body.eventType, json.dumps(body.eventData) if body.eventData is not None else None),
     )
     return {"message": "Event logged"}

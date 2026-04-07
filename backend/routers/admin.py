@@ -53,7 +53,7 @@ class RoleUpdate(BaseModel):
 def update_user_role(body: RoleUpdate):
     if body.role.lower() not in VALID_ROLES:
         raise HTTPException(400, "Invalid role")
-    database.query("UPDATE users SET role = $1 WHERE id = $2", (body.role.lower(), body.userId))
+    database.query("UPDATE users SET role = %s WHERE id = %s", (body.role.lower(), body.userId))
     return {"message": "User role updated successfully"}
 
 
@@ -63,5 +63,5 @@ class UserDelete(BaseModel):
 
 @router.delete("/users")
 def delete_user(body: UserDelete):
-    database.query("DELETE FROM users WHERE id = $1", (body.userId,))
+    database.query("DELETE FROM users WHERE id = %s", (body.userId,))
     return {"message": "User deleted successfully"}

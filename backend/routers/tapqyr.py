@@ -37,7 +37,7 @@ class QuizUpdate(BaseModel):
 @router.get("/tapqyr-quizzes")
 def list_quizzes(userId: str = Query(...)):
     rows = database.query(
-        "SELECT * FROM tapqyr_quizzes WHERE user_id = $1 ORDER BY created_at DESC",
+        "SELECT * FROM tapqyr_quizzes WHERE user_id = %s ORDER BY created_at DESC",
         (userId,),
     )
     return rows
@@ -45,7 +45,7 @@ def list_quizzes(userId: str = Query(...)):
 
 @router.get("/tapqyr-quizzes/{id}")
 def get_quiz(id: int):
-    rows = database.query("SELECT * FROM tapqyr_quizzes WHERE id = $1", (id,))
+    rows = database.query("SELECT * FROM tapqyr_quizzes WHERE id = %s", (id,))
     if not rows:
         raise HTTPException(404, "Quiz not found")
     return rows[0]
@@ -54,7 +54,7 @@ def get_quiz(id: int):
 @router.post("/tapqyr-quizzes", status_code=201)
 def create_quiz(body: QuizCreate):
     rows = database.query(
-        "INSERT INTO tapqyr_quizzes (user_id, title, questions) VALUES ($1, $2, $3) RETURNING *",
+        "INSERT INTO tapqyr_quizzes (user_id, title, questions) VALUES (%s, %s, %s) RETURNING *",
         (body.userId, body.title, json.dumps(body.questions)),
     )
     return rows[0]
@@ -64,16 +64,16 @@ def create_quiz(body: QuizCreate):
 def update_quiz(id: int, body: QuizUpdate):
     parts, values = [], []
     if body.title is not None:
-        parts.append(f"title = ${len(values)+1}")
+        parts.append("title = %s")
         values.append(body.title)
     if body.questions is not None:
-        parts.append(f"questions = ${len(values)+1}")
+        parts.append("questions = %s")
         values.append(json.dumps(body.questions))
     parts.append("updated_at = NOW()")
     values.append(id)
 
     rows = database.query(
-        f"UPDATE tapqyr_quizzes SET {', '.join(parts)} WHERE id = ${len(values)} RETURNING *",
+        f"UPDATE tapqyr_quizzes SET {', '.join(parts)} WHERE id = %s RETURNING *",
         tuple(values),
     )
     if not rows:
@@ -83,7 +83,7 @@ def update_quiz(id: int, body: QuizUpdate):
 
 @router.delete("/tapqyr-quizzes/{id}")
 def delete_quiz(id: int):
-    database.query("DELETE FROM tapqyr_quizzes WHERE id = $1", (id,))
+    database.query("DELETE FROM tapqyr_quizzes WHERE id = %s", (id,))
     return {"message": "Quiz deleted"}
 
 
@@ -105,7 +105,7 @@ def create_session(body: SessionCreate):
     for _ in range(10):
         candidate = generate_code()
         existing = database.query(
-            "SELECT id FROM tapqyr_sessions WHERE code = $1 AND status != $2",
+            "SELECT id FROM tapqyr_sessions WHERE code = %s AND status != %s",
             (candidate, "finished"),
         )
         if not existing:
@@ -116,10 +116,10 @@ def create_session(body: SessionCreate):
 
     rows = database.query(
         "INSERT INTO tapqyr_sessions (code, quiz_id, host_id, status, current_question, game_state) "
-        "VALUES ($1, $2, $3, 'waiting', -1, '{}') RETURNING *",
+        "VALUES (%s, %s, %s, 'waiting', -1, '{}') RETURNING *",
         (code, body.quizId, body.hostId),
     )
-    quiz = database.query("SELECT * FROM tapqyr_quizzes WHERE id = $1", (body.quizId,))
+    quiz = database.query("SELECT * FROM tapqyr_quizzes WHERE id = %s", (body.quizId,))
     return {**rows[0], "quiz": quiz[0] if quiz else None}
 
 
@@ -129,7 +129,7 @@ def get_session(code: str):
     rows = database.query(
         "SELECT s.*, q.title as quiz_title, q.questions "
         "FROM tapqyr_sessions s JOIN tapqyr_quizzes q ON s.quiz_id = q.id "
-        "WHERE s.code = $1 AND s.status != 'finished'",
+        "WHERE s.code = %s AND s.status != 'finished'",
         (code,),
     )
     if not rows:
@@ -137,7 +137,7 @@ def get_session(code: str):
 
     session = rows[0]
     players = database.query(
-        "SELECT * FROM tapqyr_players WHERE session_id = $1 ORDER BY joined_at",
+        "SELECT * FROM tapqyr_players WHERE session_id = %s ORDER BY joined_at",
         (session["id"],),
     )
     return {**session, "players": players}
@@ -149,27 +149,27 @@ def update_session(code: str, body: SessionAction):
     action = body.action
 
     if action == "start":
-        sql = "UPDATE tapqyr_sessions SET status='playing', current_question=0, started_at=NOW() WHERE code=$1 RETURNING *"
+        sql = "UPDATE tapqyr_sessions SET status='playing', current_question=0, started_at=NOW() WHERE code=%s RETURNING *"
         params = (code,)
     elif action == "nextQuestion":
         sql = (
             "UPDATE tapqyr_sessions SET current_question=current_question+1, "
             "game_state=jsonb_set(COALESCE(game_state,'{}')::jsonb, '{showAnswer}', '\"false\"') "
-            "WHERE code=$1 RETURNING *"
+            "WHERE code=%s RETURNING *"
         )
         params = (code,)
     elif action == "showAnswer":
         sql = (
             "UPDATE tapqyr_sessions SET game_state=jsonb_set(COALESCE(game_state,'{}')::jsonb, '{showAnswer}', 'true') "
-            "WHERE code=$1 RETURNING *"
+            "WHERE code=%s RETURNING *"
         )
         params = (code,)
     elif action == "finish":
-        sql = "UPDATE tapqyr_sessions SET status='finished', finished_at=NOW() WHERE code=$1 RETURNING *"
+        sql = "UPDATE tapqyr_sessions SET status='finished', finished_at=NOW() WHERE code=%s RETURNING *"
         params = (code,)
     elif action == "updateState":
-        sql = "UPDATE tapqyr_sessions SET game_state=$2 WHERE code=$1 RETURNING *"
-        params = (code, json.dumps(body.data))
+        sql = "UPDATE tapqyr_sessions SET game_state=%s WHERE code=%s RETURNING *"
+        params = (json.dumps(body.data), code)
     else:
         raise HTTPException(400, "Invalid action")
 
@@ -182,12 +182,12 @@ def update_session(code: str, body: SessionAction):
 @router.delete("/tapqyr-sessions/{code}")
 def delete_session(code: str):
     code = code.upper()
-    session = database.query("SELECT id FROM tapqyr_sessions WHERE code = $1", (code,))
+    session = database.query("SELECT id FROM tapqyr_sessions WHERE code = %s", (code,))
     if session:
         sid = session[0]["id"]
-        database.query("DELETE FROM tapqyr_players WHERE session_id = $1", (sid,))
-        database.query("DELETE FROM tapqyr_answers WHERE session_id = $1", (sid,))
-    database.query("DELETE FROM tapqyr_sessions WHERE code = $1", (code,))
+        database.query("DELETE FROM tapqyr_players WHERE session_id = %s", (sid,))
+        database.query("DELETE FROM tapqyr_answers WHERE session_id = %s", (sid,))
+    database.query("DELETE FROM tapqyr_sessions WHERE code = %s", (code,))
     return {"message": "Session deleted"}
 
 
@@ -206,7 +206,7 @@ def join_game(body: PlayerJoin):
     session_rows = database.query(
         "SELECT s.*, q.questions, q.title as quiz_title FROM tapqyr_sessions s "
         "JOIN tapqyr_quizzes q ON s.quiz_id = q.id "
-        "WHERE s.code = $1 AND s.status = 'waiting'",
+        "WHERE s.code = %s AND s.status = 'waiting'",
         (code,),
     )
     if not session_rows:
@@ -215,7 +215,7 @@ def join_game(body: PlayerJoin):
     session = session_rows[0]
 
     existing = database.query(
-        "SELECT id FROM tapqyr_players WHERE session_id = $1 AND name = $2",
+        "SELECT id FROM tapqyr_players WHERE session_id = %s AND name = %s",
         (session["id"], name),
     )
     if existing:
@@ -223,7 +223,7 @@ def join_game(body: PlayerJoin):
 
     avatar = f"https://api.dicebear.com/7.x/fun-emoji/svg?seed={name}"
     player_rows = database.query(
-        "INSERT INTO tapqyr_players (session_id, name, score, avatar) VALUES ($1, $2, 0, $3) RETURNING *",
+        "INSERT INTO tapqyr_players (session_id, name, score, avatar) VALUES (%s, %s, 0, %s) RETURNING *",
         (session["id"], name, avatar),
     )
 
@@ -244,7 +244,7 @@ def get_players(code: str, playerId: str | None = Query(None)):
     code = code.upper()
     session_rows = database.query(
         "SELECT s.*, q.questions FROM tapqyr_sessions s "
-        "JOIN tapqyr_quizzes q ON s.quiz_id = q.id WHERE s.code = $1",
+        "JOIN tapqyr_quizzes q ON s.quiz_id = q.id WHERE s.code = %s",
         (code,),
     )
     if not session_rows:
@@ -252,14 +252,14 @@ def get_players(code: str, playerId: str | None = Query(None)):
 
     session = session_rows[0]
     players = database.query(
-        "SELECT * FROM tapqyr_players WHERE session_id = $1 ORDER BY score DESC",
+        "SELECT * FROM tapqyr_players WHERE session_id = %s ORDER BY score DESC",
         (session["id"],),
     )
 
     answers = []
     if session.get("status") == "playing" and session.get("current_question", -1) >= 0:
         answers = database.query(
-            "SELECT player_id, answer_index FROM tapqyr_answers WHERE session_id = $1 AND question_index = $2",
+            "SELECT player_id, answer_index FROM tapqyr_answers WHERE session_id = %s AND question_index = %s",
             (session["id"], session["current_question"]),
         )
 
@@ -292,7 +292,7 @@ def submit_answer(body: AnswerBody):
     session_rows = database.query(
         "SELECT s.*, q.questions FROM tapqyr_sessions s "
         "JOIN tapqyr_quizzes q ON s.quiz_id = q.id "
-        "WHERE s.code = $1 AND s.status = 'playing'",
+        "WHERE s.code = %s AND s.status = 'playing'",
         (code,),
     )
     if not session_rows:
@@ -302,7 +302,7 @@ def submit_answer(body: AnswerBody):
     questions = parse_json_field(session.get("questions") or [])
 
     existing = database.query(
-        "SELECT id FROM tapqyr_answers WHERE session_id=$1 AND player_id=$2 AND question_index=$3",
+        "SELECT id FROM tapqyr_answers WHERE session_id=%s AND player_id=%s AND question_index=%s",
         (session["id"], body.playerId, body.questionIndex),
     )
     if existing:
@@ -317,13 +317,13 @@ def submit_answer(body: AnswerBody):
 
     database.query(
         "INSERT INTO tapqyr_answers (session_id, player_id, question_index, answer_index, is_correct, points, answered_at) "
-        "VALUES ($1, $2, $3, $4, $5, $6, NOW())",
+        "VALUES (%s, %s, %s, %s, %s, %s, NOW())",
         (session["id"], body.playerId, body.questionIndex, body.answerIndex, is_correct, points),
     )
     if points > 0:
-        database.query("UPDATE tapqyr_players SET score = score + $1 WHERE id = $2", (points, body.playerId))
+        database.query("UPDATE tapqyr_players SET score = score + %s WHERE id = %s", (points, body.playerId))
 
-    player = database.query("SELECT * FROM tapqyr_players WHERE id = $1", (body.playerId,))
+    player = database.query("SELECT * FROM tapqyr_players WHERE id = %s", (body.playerId,))
     return {
         "isCorrect": is_correct,
         "correctIndex": correct_index,

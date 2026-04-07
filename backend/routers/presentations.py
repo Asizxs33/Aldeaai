@@ -40,7 +40,7 @@ def _parse_slides(row: dict) -> dict:
 def list_presentations(userId: str = Query(...)):
     rows = database.query(
         "SELECT id, title, topic, template_id, language, slide_count, presentation_type, created_at, updated_at "
-        "FROM presentations WHERE user_id = $1 ORDER BY created_at DESC",
+        "FROM presentations WHERE user_id = %s ORDER BY created_at DESC",
         (userId,),
     )
     return [dict(r, created_at=str(r["created_at"]), updated_at=str(r["updated_at"])) for r in rows]
@@ -48,7 +48,7 @@ def list_presentations(userId: str = Query(...)):
 
 @router.get("/presentation-api/{id}")
 def get_presentation(id: int):
-    rows = database.query("SELECT * FROM presentations WHERE id = $1", (id,))
+    rows = database.query("SELECT * FROM presentations WHERE id = %s", (id,))
     if not rows:
         raise HTTPException(404, "Presentation not found")
     return _parse_slides(rows[0])
@@ -58,7 +58,7 @@ def get_presentation(id: int):
 def create_presentation(body: PresentationCreate):
     rows = database.query(
         "INSERT INTO presentations (user_id, title, topic, template_id, language, slide_count, slides, presentation_type, ktp) "
-        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *",
         (
             body.userId, body.title, body.topic, body.templateId,
             body.language or "kk", body.slideCount or len(body.slides),
@@ -75,7 +75,6 @@ def update_presentation(id: int, body: PresentationUpdate):
     if not fields:
         raise HTTPException(400, "No fields to update")
 
-    # Build SET clause
     mapping = {
         "title": "title", "topic": "topic", "templateId": "template_id",
         "language": "language", "slideCount": "slide_count",
@@ -87,14 +86,14 @@ def update_presentation(id: int, body: PresentationUpdate):
             val = fields[key]
             if key in ("slides", "ktp") and val is not None:
                 val = json.dumps(val)
-            parts.append(f"{col} = ${len(values)+1}")
+            parts.append(f"{col} = %s")
             values.append(val)
 
-    parts.append(f"updated_at = NOW()")
+    parts.append("updated_at = NOW()")
     values.append(id)
 
     rows = database.query(
-        f"UPDATE presentations SET {', '.join(parts)} WHERE id = ${len(values)} RETURNING *",
+        f"UPDATE presentations SET {', '.join(parts)} WHERE id = %s RETURNING *",
         tuple(values),
     )
     if not rows:
@@ -104,7 +103,7 @@ def update_presentation(id: int, body: PresentationUpdate):
 
 @router.delete("/presentation-api/{id}")
 def delete_presentation(id: int):
-    rows = database.query("DELETE FROM presentations WHERE id = $1 RETURNING id", (id,))
+    rows = database.query("DELETE FROM presentations WHERE id = %s RETURNING id", (id,))
     if not rows:
         raise HTTPException(404, "Presentation not found")
     return {"message": "Presentation deleted", "id": rows[0]["id"]}

@@ -39,7 +39,7 @@ def register(body: RegisterBody):
     if not email or not body.password:
         raise HTTPException(400, "Email and password are required")
 
-    existing = database.query("SELECT id FROM users WHERE email = $1", (email,))
+    existing = database.query("SELECT id FROM users WHERE email = %s", (email,))
     if existing:
         raise HTTPException(400, "User already exists")
 
@@ -48,12 +48,12 @@ def register(body: RegisterBody):
 
     if body.name:
         database.query(
-            "INSERT INTO users (email, password, name, verification_code, email_verified) VALUES ($1, $2, $3, $4, FALSE)",
+            "INSERT INTO users (email, password, name, verification_code, email_verified) VALUES (%s, %s, %s, %s, FALSE)",
             (email, hashed, body.name, code),
         )
     else:
         database.query(
-            "INSERT INTO users (email, password, verification_code, email_verified) VALUES ($1, $2, $3, FALSE)",
+            "INSERT INTO users (email, password, verification_code, email_verified) VALUES (%s, %s, %s, FALSE)",
             (email, hashed, code),
         )
 
@@ -64,7 +64,7 @@ def register(body: RegisterBody):
 @router.post("/login")
 def login(body: LoginBody):
     email = body.email.lower().strip()
-    rows = database.query("SELECT * FROM users WHERE email = $1", (email,))
+    rows = database.query("SELECT * FROM users WHERE email = %s", (email,))
     if not rows:
         raise HTTPException(400, "Invalid credentials")
 
@@ -96,7 +96,7 @@ def login(body: LoginBody):
 @router.post("/verify-email")
 def verify_email(body: VerifyBody):
     email = body.email.lower().strip()
-    rows = database.query("SELECT * FROM users WHERE email = $1", (email,))
+    rows = database.query("SELECT * FROM users WHERE email = %s", (email,))
     if not rows:
         raise HTTPException(404, "User not found")
 
@@ -105,7 +105,7 @@ def verify_email(body: VerifyBody):
         raise HTTPException(400, "Invalid verification code")
 
     database.query(
-        "UPDATE users SET email_verified = TRUE, verification_code = NULL WHERE email = $1",
+        "UPDATE users SET email_verified = TRUE, verification_code = NULL WHERE email = %s",
         (email,),
     )
     return {"message": "Email verified successfully"}
@@ -114,7 +114,7 @@ def verify_email(body: VerifyBody):
 @router.post("/resend-code")
 def resend_code(body: ResendBody):
     email = body.email.lower().strip()
-    rows = database.query("SELECT * FROM users WHERE email = $1", (email,))
+    rows = database.query("SELECT * FROM users WHERE email = %s", (email,))
     if not rows:
         raise HTTPException(404, "User not found")
 
@@ -123,7 +123,7 @@ def resend_code(body: ResendBody):
         raise HTTPException(400, "Email is already verified")
 
     code = generate_code()
-    database.query("UPDATE users SET verification_code = $1 WHERE email = $2", (code, email))
+    database.query("UPDATE users SET verification_code = %s WHERE email = %s", (code, email))
     sent = send_verification_email(email, code)
     if not sent:
         raise HTTPException(500, "Failed to send verification email")
