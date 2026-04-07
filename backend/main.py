@@ -11,9 +11,15 @@ app = FastAPI(title="Aldea AI API")
 
 # CORS — allow Vercel frontend and local dev
 frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+allowed_origins = list({
+    frontend_url,
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://aldeaai.vercel.app",
+})
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url, "http://localhost:5173", "http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
