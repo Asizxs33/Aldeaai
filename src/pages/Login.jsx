@@ -49,11 +49,11 @@ const Login = () => {
                 trackAnalyticsEvent(ANALYTICS_EVENTS.USER_LOGIN, null, data.user.id);
 
                 navigate('/dashboard');
-            } else if (response.status === 401 && data.requiresVerification) {
+            } else if (response.status === 401 && (data.detail?.requiresVerification || data.requiresVerification)) {
                 // Redirect to verify email
                 navigate(`/verify-email?email=${encodeURIComponent(email)}`);
             } else {
-                setError(data.message || 'Login failed');
+                setError(data.detail?.message || data.detail || data.message || 'Login failed');
             }
         } catch (err) {
             setError('Server error. Please try again later.');

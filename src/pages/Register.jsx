@@ -48,7 +48,8 @@ const Register = () => {
                 // Redirect to verify email
                 navigate(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
             } else {
-                if (data.message === 'User already exists') {
+                const errorMsg = data.detail || data.message || 'Registration failed';
+                if (errorMsg === 'User already exists') {
                     setError(
                         <span>
                             {language === 'kk' ? 'Бұл пошта тіркелген.' : language === 'ru' ? 'Эта почта уже зарегистрирована.' : 'This email is already registered.'}{' '}
@@ -58,7 +59,7 @@ const Register = () => {
                         </span>
                     );
                 } else {
-                    setError(data.message || 'Registration failed');
+                    setError(errorMsg);
                 }
             }
         } catch (err) {

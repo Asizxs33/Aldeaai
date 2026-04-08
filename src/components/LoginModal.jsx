@@ -36,7 +36,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                 onClose();
                 navigate('/dashboard');
             } else {
-                setError(data.message || 'Login failed');
+                setError(data.detail?.message || data.detail || data.message || 'Login failed');
             }
         } catch (err) {
             setError('Server error. Please try again later.');
