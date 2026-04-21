@@ -224,3 +224,54 @@ body {
 .shadow-glow:hover {
   box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);
 }
+
+/* ҚМЖ table styles */
+.kmj-output table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 13px;
+  font-family: Arial, sans-serif;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+.kmj-output table th {
+  background: #2563eb;
+  color: #fff;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border: 1px solid #1d4ed8;
+}
+.kmj-output table td {
+  padding: 9px 12px;
+  border: 1px solid #c0cfe0;
+  vertical-align: top;
+  line-height: 1.5;
+}
+.kmj-output table tr:nth-child(even) td {
+  background: #f0f6ff;
+}
+.kmj-output table tr:nth-child(odd) td {
+  background: #ffffff;
+}
+.kmj-output table tr:hover td {
+  background: #e8f0fe;
+}
+.dark .kmj-output table th {
+  background: #1e40af;
+  border-color: #1e3a8a;
+}
+.dark .kmj-output table td {
+  border-color: #334155;
+}
+.dark .kmj-output table tr:nth-child(even) td {
+  background: #1e293b;
+}
+.dark .kmj-output table tr:nth-child(odd) td {
+  background: #0f172a;
+}
+.dark .kmj-output table tr:hover td {
+  background: #1e3a5f;
+}

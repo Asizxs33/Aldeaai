@@ -401,7 +401,8 @@ const Generator = () => {
                                 </div>
 
                                 <div
-                                    className="prose dark:prose-invert max-w-none flex-grow overflow-y-auto custom-scrollbar pr-2 leading-relaxed text-gray-600 dark:text-gray-300"
+                                    className="prose dark:prose-invert max-w-none flex-grow overflow-y-auto custom-scrollbar pr-2 leading-relaxed text-gray-600 dark:text-gray-300 kmj-output"
+                                    style={id === 'kmj' ? { overflowX: 'auto' } : {}}
                                 >
                                     {id === 'test' ? (
                                         (() => {
