@@ -1,9 +1,7 @@
-import random
 import bcrypt
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import database
-from email_service import send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -15,9 +13,6 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-
-def generate_code() -> str:
-    return str(random.randint(100000, 999999))
 
 
 class RegisterBody(BaseModel):
@@ -51,21 +46,19 @@ def register(body: RegisterBody):
         raise HTTPException(400, "User already exists")
 
     hashed = hash_password(body.password)
-    code = generate_code()
 
     if body.name:
         database.query(
-            "INSERT INTO users (email, password, name, verification_code, email_verified) VALUES (%s, %s, %s, %s, FALSE)",
-            (email, hashed, body.name, code),
+            "INSERT INTO users (email, password, name, email_verified) VALUES (%s, %s, %s, TRUE)",
+            (email, hashed, body.name),
         )
     else:
         database.query(
-            "INSERT INTO users (email, password, verification_code, email_verified) VALUES (%s, %s, %s, FALSE)",
-            (email, hashed, code),
+            "INSERT INTO users (email, password, email_verified) VALUES (%s, %s, TRUE)",
+            (email, hashed),
         )
 
-    send_verification_email(email, code)
-    return {"message": "User registered successfully. Please verify your email.", "email": email}
+    return {"message": "User registered successfully.", "email": email}
 
 
 @router.post("/login")
@@ -78,13 +71,6 @@ def login(body: LoginBody):
     user = rows[0]
     if not verify_password(body.password, user["password"]):
         raise HTTPException(400, "Invalid credentials")
-
-    if not user.get("email_verified"):
-        raise HTTPException(401, detail={
-            "message": "Email not verified",
-            "email": user["email"],
-            "requiresVerification": True,
-        })
 
     return {
         "message": "Logged in successfully",
