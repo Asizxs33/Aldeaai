@@ -4,8 +4,8 @@ import { getTranslation } from '../translations/translations';
 import { Plus, Sparkles, User, MessageSquare, Trash2, PanelLeftClose, PanelLeft, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAnalytics, ANALYTICS_EVENTS } from '../hooks/useAnalytics';
-import { generateContent } from '../utils/generateContent';
 import { markdownToHtml } from '../utils/exportContent';
+import { API_BASE } from '../utils/api';
 import UpgradeModal from '../components/UpgradeModal';
 
 const Bot = () => {
@@ -51,15 +51,17 @@ const Bot = () => {
         trackEvent(ANALYTICS_EVENTS.BOT_MESSAGE_SENT, { length: userText.length });
 
         try {
-            // Call AI
-            // passing 'bot' as toolId, userText as 'topic' (or prompt content)
-            const aiResponseText = await generateContent(
-                'bot',
-                userText,
-                'General Chat',
-                'General',
-                language
-            );
+            const res = await fetch(`${API_BASE}/api/ai/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userText, language }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `Server error: ${res.status}`);
+            }
+            const data = await res.json();
+            const aiResponseText = data.response;
 
             const aiMessage = {
                 id: Date.now() + 1,

@@ -112,6 +112,42 @@ def generate_content(body: ContentBody):
     return StreamingResponse(stream(), media_type="text/plain; charset=utf-8")
 
 
+# ── Chat (non-streaming, for bot UI) ─────────────────────────────────────────
+
+class ChatBody(BaseModel):
+    message: str
+    language: str | None = "ru"
+
+
+@router.post("/chat")
+def chat(body: ChatBody):
+    if not body.message:
+        raise HTTPException(400, "message is required")
+
+    lang_map = {"kk": "казахском", "ru": "русском", "en": "английском"}
+    lang = lang_map.get(body.language or "ru", "русском")
+
+    client = get_openai()
+    completion = client.chat.completions.create(
+        model=get_model(),
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"Ты - умный и дружелюбный AI-ассистент. "
+                    f"Отвечай на {lang} языке. "
+                    "Используй обычный текст, абзацы и Markdown. "
+                    "Будь лаконичным и полезным."
+                ),
+            },
+            {"role": "user", "content": body.message},
+        ],
+        temperature=0.7,
+        max_tokens=2000,
+    )
+    return {"response": completion.choices[0].message.content}
+
+
 # ── TTS ───────────────────────────────────────────────────────────────────────
 
 class TTSBody(BaseModel):
