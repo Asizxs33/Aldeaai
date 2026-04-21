@@ -9,7 +9,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 class EventBody(BaseModel):
     eventType: str
-    userId: str | None = None
+    userId: int | str | None = None
     eventData: Any = None
 
 
