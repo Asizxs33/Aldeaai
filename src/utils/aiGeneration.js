@@ -22,99 +22,30 @@ export const generateSlideContent = async (
     ktp = null,
     uploadedImages = []
 ) => {
-    // Try Edge Function streaming first (30s timeout), then fallback to regular function
-    const streamEndpoint = '/api/generate-presentation-stream';
-    const regularEndpoint = `${_BASE}/api/ai/generate-presentation`;
+    const endpoint = `${_BASE}/api/ai/generate-presentation`;
 
-    // Get userId for subscription check
     let userId = null;
     try {
         const userStr = localStorage.getItem('user');
-        if (userStr) {
-            userId = JSON.parse(userStr).id;
-        }
-    } catch (e) {
-        console.error('Error reading user from localStorage', e);
-    }
+        if (userStr) userId = JSON.parse(userStr).id;
+    } catch (e) {}
 
-    const requestBody = {
-        prompt: topic,
-        topic,
-        slideCount,
-        language,
-        presentationType,
-        ktp,
-        userId
-    };
-
-    // Try Edge Function with streaming first
-    if (!import.meta.env.DEV) {
-        try {
-            const response = await fetch(streamEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (response.ok) {
-                const text = await response.text();
-                const lines = text.split('\n');
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') break;
-
-                        try {
-                            const parsed = JSON.parse(data);
-                            if (parsed.type === 'complete' && parsed.slides) {
-                                const slides = parsed.slides;
-                                // Add uploaded images
-                                slides.forEach((slide, index) => {
-                                    if (uploadedImages[index]) {
-                                        slide.imageUrl = uploadedImages[index];
-                                    }
-                                });
-                                return slides;
-                            } else if (parsed.type === 'error') {
-                                throw new Error(parsed.message);
-                            }
-                        } catch (e) {
-                            if (e.message && !e.message.includes('JSON')) {
-                                throw e;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (streamError) {
-            console.log('Edge streaming failed, trying regular function:', streamError.message);
-        }
-    }
-
-    // Fallback to regular serverless function
-    const response = await fetch(regularEndpoint, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({ prompt: topic, topic, slideCount, language, presentationType, ktp, userId })
     });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || 'AI generation failed');
+        throw new Error(errorData.error || errorData.detail || 'AI generation failed');
     }
 
     const data = await response.json();
+    if (!data.slides || !Array.isArray(data.slides)) throw new Error('Invalid response from server');
 
-    if (!data.slides || !Array.isArray(data.slides)) {
-        throw new Error('Invalid response from server');
-    }
-
-    // Add uploaded images to slides
     data.slides.forEach((slide, index) => {
-        if (uploadedImages[index]) {
-            slide.imageUrl = uploadedImages[index];
-        }
+        if (uploadedImages[index]) slide.imageUrl = uploadedImages[index];
     });
 
     return data.slides;
@@ -128,120 +59,35 @@ export const generateSlideContent = async (
  */
 export const generateSlideContentWithProgress = async (options, onProgress) => {
     const { topic, slideCount, language, presentationType, ktp, uploadedImages = [] } = options;
-
-    const streamEndpoint = '/api/generate-presentation-stream';
-    const regularEndpoint = `${_BASE}/api/ai/generate-presentation`;
+    const endpoint = `${_BASE}/api/ai/generate-presentation`;
 
     let userId = null;
     try {
         const userStr = localStorage.getItem('user');
         if (userStr) userId = JSON.parse(userStr).id;
-    } catch (e) { }
+    } catch (e) {}
 
-    onProgress?.({ type: 'start', message: 'Запуск генерации...', progress: 5 });
-
-    const requestBody = {
-        prompt: topic,
-        topic,
-        slideCount,
-        language,
-        presentationType,
-        ktp,
-        userId
-    };
-
-    // Try Edge Function streaming in production
-    if (!import.meta.env.DEV) {
-        try {
-            onProgress?.({ type: 'progress', message: 'Подключение к AI...', progress: 10 });
-
-            const response = await fetch(streamEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (response.ok && response.body) {
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = line.slice(6);
-                            if (data === '[DONE]') continue;
-
-                            try {
-                                const parsed = JSON.parse(data);
-
-                                if (parsed.type === 'start') {
-                                    onProgress?.({ type: 'start', message: parsed.message, progress: 15 });
-                                } else if (parsed.type === 'progress') {
-                                    onProgress?.({
-                                        type: 'progress',
-                                        message: `Генерация контента... (${parsed.progress}%)`,
-                                        progress: parsed.progress
-                                    });
-                                } else if (parsed.type === 'complete' && parsed.slides) {
-                                    const slides = parsed.slides;
-                                    slides.forEach((slide, index) => {
-                                        if (uploadedImages[index]) {
-                                            slide.imageUrl = uploadedImages[index];
-                                        }
-                                    });
-                                    onProgress?.({ type: 'complete', message: 'Готово!', progress: 100, slides });
-                                    return slides;
-                                } else if (parsed.type === 'error') {
-                                    throw new Error(parsed.message);
-                                }
-                            } catch (e) {
-                                if (e.message && !e.message.includes('JSON')) {
-                                    throw e;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (streamError) {
-            console.log('Edge streaming failed:', streamError.message);
-            onProgress?.({ type: 'progress', message: 'Переключение на резервный сервер...', progress: 20 });
-        }
-    }
-
-    // Fallback to regular function
-    onProgress?.({ type: 'progress', message: 'Генерация слайдов...', progress: 30 });
+    onProgress?.({ type: 'progress', message: 'Генерация слайдов...', progress: 20 });
 
     try {
-        const response = await fetch(regularEndpoint, {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({ prompt: topic, topic, slideCount, language, presentationType, ktp, userId })
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || errorData.message || 'Generation failed');
+            throw new Error(errorData.error || errorData.detail || 'Generation failed');
         }
 
+        onProgress?.({ type: 'progress', message: 'Обработка слайдов...', progress: 80 });
         const data = await response.json();
 
-        if (!data.slides || !Array.isArray(data.slides)) {
-            throw new Error('Invalid response');
-        }
+        if (!data.slides || !Array.isArray(data.slides)) throw new Error('Invalid response');
 
         data.slides.forEach((slide, index) => {
-            if (uploadedImages[index]) {
-                slide.imageUrl = uploadedImages[index];
-            }
+            if (uploadedImages[index]) slide.imageUrl = uploadedImages[index];
         });
 
         onProgress?.({ type: 'complete', message: 'Готово!', progress: 100, slides: data.slides });
