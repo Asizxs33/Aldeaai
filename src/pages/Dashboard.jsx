@@ -102,7 +102,7 @@ const SubjectCard = ({ id, title, color, icon, index, stats, subtitle, path }) =
                 min-h-[140px] md:min-h-0
             `}>
                 {/* Noise Texture Overlay */}
-                <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none z-0 mix-blend-overlay" style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}></div>
+                <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none z-0 mix-blend-overlay" style={{ backgroundImage: 'url("/noise.svg")' }}></div>
 
                 {/* Animated Gradient Background */}
                 <div className={`absolute -right-32 -top-32 w-80 h-80 bg-gradient-to-br ${color} rounded-full blur-[100px] opacity-20 group-hover:opacity-40 transition-opacity duration-700 animate-pulse-slow`}></div>
@@ -183,7 +183,7 @@ const Dashboard = () => {
                     {/* Dynamic Background - Strictly clipped */}
                     <div className="absolute inset-0 overflow-hidden rounded-[2rem] md:rounded-[3rem]">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-600/30 to-purple-600/30 rounded-full blur-[120px] animate-pulse-slow"></div>
-                        <div className="absolute top-0 right-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+                        <div className="absolute top-0 right-0 w-full h-full bg-[url('/noise.svg')] opacity-20 mix-blend-overlay"></div>
                     </div>
 
                     <div className="relative z-10 max-w-4xl mx-auto space-y-4 md:space-y-8">

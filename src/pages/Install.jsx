@@ -128,7 +128,7 @@ const Install = () => {
                 transition={{ delay: 0.7 }}
                 className="mt-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[2rem] p-8 text-center text-white relative overflow-hidden"
             >
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-10"></div>
                 <div className="relative z-10">
                     <h3 className="text-2xl font-bold mb-4">QR код арқылы жылдам орнату</h3>
                     <div className="w-40 h-40 bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center">
