@@ -25,6 +25,11 @@ class PresentationBody(BaseModel):
     prompt: str
     slideCount: int | None = None
     language: str | None = None
+    presentationType: str | None = None
+    topic: str | None = None
+
+
+VALID_LAYOUTS = {"title", "split_right", "split_left", "grid", "quote", "timeline", "stats"}
 
 
 @router.post("/generate-presentation")
@@ -32,15 +37,52 @@ def generate_presentation(body: PresentationBody):
     if not body.prompt:
         raise HTTPException(400, "Prompt is required")
 
+    slide_count = body.slideCount or 8
+    lang_map = {"kk": "казахском", "ru": "русском", "en": "английском"}
+    lang = lang_map.get(body.language or "ru", "русском")
+
+    system_prompt = f"""You are an expert presentation designer for educational content.
+Return ONLY a valid JSON object with this exact structure — no extra text:
+{{
+  "slides": [
+    {{
+      "id": 1,
+      "title": "Slide title (5-8 words)",
+      "content": "Main paragraph: 2-3 informative sentences explaining the topic in detail.",
+      "bulletPoints": ["Point 1 with detail", "Point 2 with detail", "Point 3 with detail", "Point 4 with detail"],
+      "layout": "one of: title | split_right | split_left | grid | quote | timeline | stats",
+      "imageSearchTerm": "2-3 English keywords for image search (always English)"
+    }}
+  ]
+}}
+
+Layout assignment rules (STRICTLY follow these):
+- Slide 1: ALWAYS "title"
+- Last slide: "quote" (inspiring conclusion) or "title"
+- Slides with 3 numbers/percentages/statistics: "stats"
+- Slides comparing 4 items: "grid"
+- Slides about history/steps/process: "timeline"
+- Alternate between "split_right" and "split_left" for regular content slides
+
+Content rules:
+- content: ALWAYS 2-3 full sentences, informative and substantive — NEVER empty
+- bulletPoints: ALWAYS 3-4 items with real text — NEVER empty array
+- title: concise but meaningful (5-8 words)
+- imageSearchTerm: always in English, relevant to slide content
+- All slide text content must be in {lang} language
+- imageSearchTerm must be in English regardless of language"""
+
+    user_prompt = f"""Create a {slide_count}-slide presentation on: "{body.prompt}"
+Language: {lang}
+Presentation type: {body.presentationType or 'academic'}
+Make it educational, engaging, and content-rich. Every slide must have substantial text."""
+
     client = get_openai()
     completion = client.chat.completions.create(
         model=get_model(),
         messages=[
-            {
-                "role": "system",
-                "content": "Ты - опытный педагог и методист. Твоя задача - создавать профессиональные презентации для образовательных целей. Всегда возвращай только валидный JSON массив, без дополнительного текста.",
-            },
-            {"role": "user", "content": body.prompt},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
         temperature=0.7,
         response_format={"type": "json_object"},
@@ -52,17 +94,27 @@ def generate_presentation(body: PresentationBody):
     if not isinstance(slides, list):
         slides = [slides]
 
-    slides = [
-        {
+    import random as _random
+    normalized = []
+    for i, s in enumerate(slides):
+        layout = s.get("layout", "split_right")
+        if layout not in VALID_LAYOUTS:
+            layout = "split_right"
+
+        search_term = s.get("imageSearchTerm", body.prompt)
+        safe_term = search_term.replace(" ", ",")
+        image_url = f"https://loremflickr.com/800/500/{safe_term}?random={_random.randint(1, 99999)}"
+
+        normalized.append({
             "id": s.get("id", i + 1),
-            "title": s.get("title", f"Слайд {i+1}"),
+            "title": s.get("title", f"Slide {i+1}"),
             "content": s.get("content", ""),
             "bulletPoints": s.get("bulletPoints", []) if isinstance(s.get("bulletPoints"), list) else [],
-            "imageUrl": s.get("imageUrl"),
-        }
-        for i, s in enumerate(slides)
-    ]
-    return {"slides": slides}
+            "layout": layout,
+            "imageUrl": image_url,
+        })
+
+    return {"slides": normalized}
 
 
 # ── Generate content (streaming) ──────────────────────────────────────────────
