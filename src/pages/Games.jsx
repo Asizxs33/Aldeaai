@@ -10,6 +10,7 @@ import {
     Globe,
     Play,
     Sparkles,
+    Target,
     Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -66,6 +67,18 @@ const Games = () => {
             text: 'text-cyan-600 dark:text-cyan-400',
             dot: 'bg-cyan-500',
             label: 'Live Class'
+        },
+        {
+            id: 'aldeaPulse',
+            icon: Target,
+            title: 'Aldea Pulse',
+            desc: 'Fast reaction arena with combos and high-score chase',
+            color: 'from-indigo-500 to-blue-500',
+            glow: 'from-indigo-500/20 to-blue-500/0',
+            bg: 'bg-indigo-500/10',
+            text: 'text-indigo-600 dark:text-indigo-400',
+            dot: 'bg-indigo-500',
+            label: 'Reaction Arena'
         }
     ];
 
@@ -78,6 +91,8 @@ const Games = () => {
             navigate('/games/aldea-ushqyr');
         } else if (gameId === 'aldeaTapqyr') {
             navigate('/games/aldea-tapqyr');
+        } else if (gameId === 'aldeaPulse') {
+            navigate('/games/aldea-pulse');
         }
     };
 
@@ -114,7 +129,7 @@ const Games = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {[
-                                { value: '4', label: 'Game Modes' },
+                                { value: '5', label: 'Game Modes' },
                                 { value: '3', label: 'Languages' },
                                 { value: 'PRO', label: 'Premium Access' }
                             ].map((item) => (
@@ -164,10 +179,10 @@ const Games = () => {
                                 </div>
 
                                 <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    {getTranslation(language, game.titleKey)}
+                                    {game.title || getTranslation(language, game.titleKey)}
                                 </h3>
                                 <p className="text-gray-500 dark:text-gray-400 font-medium leading-relaxed mb-6">
-                                    {getTranslation(language, game.descKey)}
+                                    {game.desc || getTranslation(language, game.descKey)}
                                 </p>
                             </div>
 

@@ -30,6 +30,7 @@ import AldeaKids from './pages/AldeaKids';
 import AldeaKidsGame from './pages/AldeaKidsGame';
 import AldeaUshqyr from './pages/AldeaUshqyr';
 import AldeaTapqyr from './pages/AldeaTapqyr';
+import AldeaPulse from './pages/AldeaPulse';
 import AITools from './pages/AITools';
 import Feedback from './pages/Feedback';
 import Help from './pages/Help';
@@ -95,6 +96,7 @@ function App() {
               <Route path="/games/aldea-kids/:gameId" element={<ProtectedRoute allowedRoles={['pro', 'ultra', 'moderator', 'admin']}><AldeaKidsGame /></ProtectedRoute>} />
               <Route path="/games/aldea-ushqyr" element={<ProtectedRoute allowedRoles={['pro', 'ultra', 'moderator', 'admin']}><AldeaUshqyr /></ProtectedRoute>} />
               <Route path="/games/aldea-tapqyr" element={<ProtectedRoute allowedRoles={['pro', 'ultra', 'moderator', 'admin']}><AldeaTapqyr /></ProtectedRoute>} />
+              <Route path="/games/aldea-pulse" element={<ProtectedRoute allowedRoles={['pro', 'ultra', 'moderator', 'admin']}><AldeaPulse /></ProtectedRoute>} />
 
               <Route path="/feedback" element={<ProtectedRoute><DashboardLayout><Feedback /></DashboardLayout></ProtectedRoute>} />
               <Route path="/help" element={<ProtectedRoute><DashboardLayout><Help /></DashboardLayout></ProtectedRoute>} />
