@@ -1,9 +1,11 @@
-import os
 import json
+import os
+import re
+
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse, Response
-from pydantic import BaseModel
+from fastapi.responses import Response, StreamingResponse
 from openai import OpenAI
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -19,7 +21,12 @@ def get_model():
     return os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 
-# ── Generate presentation ──────────────────────────────────────────────────────
+def get_presentation_model():
+    return os.environ.get("OPENAI_PRESENTATION_MODEL", get_model())
+
+
+# Presentation generation -------------------------------------------------------
+
 
 class PresentationBody(BaseModel):
     prompt: str
@@ -27,9 +34,147 @@ class PresentationBody(BaseModel):
     language: str | None = None
     presentationType: str | None = None
     topic: str | None = None
+    ktp: str | None = None
 
 
 VALID_LAYOUTS = {"title", "split_right", "split_left", "grid", "quote", "timeline", "stats"}
+LANGUAGE_MAP = {"kk": "Kazakh", "ru": "Russian", "en": "English"}
+PRESENTATION_TYPE_GUIDANCE = {
+    "academic": "Focus on clear concepts, definitions, and classroom-ready examples.",
+    "open": "Make it interactive and discussion-driven with student engagement prompts.",
+    "science": "Use hypothesis, evidence, method, and interpretation language.",
+    "educational": "Prioritize practical life relevance and reflective questions.",
+    "parent": "Use clear non-technical language and emphasize outcomes and support.",
+}
+GENERIC_BULLETS = {
+    "en": ["Core idea explained", "Real-world example", "Common mistake to avoid", "Quick recap"],
+    "ru": ["Core idea explained", "Real-world example", "Common mistake to avoid", "Quick recap"],
+    "kk": ["Core idea explained", "Real-world example", "Common mistake to avoid", "Quick recap"],
+}
+PRACTICAL_BULLET = {
+    "en": "Classroom action: quick student task/checkpoint",
+    "ru": "Classroom action: quick student task/checkpoint",
+    "kk": "Classroom action: quick student task/checkpoint",
+}
+
+
+def _clean_text(value, fallback):
+    text = str(value or "").strip()
+    text = re.sub(r"\s+", " ", text)
+    return text if text else fallback
+
+
+def _split_sentences(text):
+    return [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+
+
+def _ensure_content(text, fallback_title):
+    content = _clean_text(text, f"{fallback_title}.")
+    sentences = _split_sentences(content)
+    if len(sentences) >= 2:
+        return content
+    if content.endswith((".", "!", "?")):
+        return f"{content} This slide clarifies the concept with a practical classroom angle."
+    return f"{content}. This slide clarifies the concept with a practical classroom angle."
+
+
+def _normalize_bullets(raw_bullets, content, lang_code):
+    clean = []
+    if isinstance(raw_bullets, list):
+        for item in raw_bullets:
+            text = _clean_text(item, "")
+            if text:
+                clean.append(text)
+    if len(clean) >= 3:
+        result = clean[:4]
+    else:
+        derived = []
+        for sentence in _split_sentences(content):
+            short = sentence.strip()
+            if len(short) > 140:
+                short = short[:137].rstrip() + "..."
+            if short and short not in derived:
+                derived.append(short)
+            if len(derived) >= 4:
+                break
+
+        while len(derived) < 3:
+            fallback_items = GENERIC_BULLETS.get(lang_code, GENERIC_BULLETS["en"])
+            derived.append(fallback_items[len(derived)])
+        result = derived[:4]
+
+    practical = PRACTICAL_BULLET.get(lang_code, PRACTICAL_BULLET["en"])
+    lowered = " ".join(item.lower() for item in result)
+    if not any(token in lowered for token in ("practice", "task", "checkpoint", "activity")):
+        if len(result) < 4:
+            result.append(practical)
+        else:
+            result[-1] = practical
+
+    return result[:4]
+
+
+def _guess_layout(index, total, source_layout, title, content):
+    if index == 0:
+        return "title"
+    if index == total - 1:
+        return "quote"
+
+    layout = source_layout if source_layout in VALID_LAYOUTS else ""
+    text = f"{title} {content}".lower()
+
+    has_stats = bool(re.search(r"\b\d+([.,]\d+)?\s*%?\b", text))
+    if has_stats:
+        return "stats"
+    if any(keyword in text for keyword in ("step", "stage", "timeline", "phase", "process")):
+        return "timeline"
+    if layout in VALID_LAYOUTS and layout not in {"title", "quote"}:
+        return layout
+
+    return "split_left" if index % 2 else "split_right"
+
+
+def _make_image_term(raw_term, title, prompt):
+    term = _clean_text(raw_term, "")
+    if len(term) < 3:
+        term = f"{title} {prompt}"
+    term = re.sub(r"[^\w\s,-]", " ", term).strip()
+    term = re.sub(r"\s+", " ", term)
+    words = term.split(" ")
+    if len(words) > 4:
+        words = words[:4]
+    return " ".join(words) if words else "education classroom"
+
+
+def _build_slide_plan(slide_count, presentation_type):
+    base_plan = [
+        "Title and lesson framing",
+        "Learning objectives and expected outcomes",
+        "Core concept explanation",
+        "Visual example or demonstration",
+        "Guided practice with teacher prompts",
+        "Common mistakes and how to avoid them",
+        "Application task or mini-case",
+        "Quick check for understanding",
+        "Summary and key takeaways",
+        "Reflection / homework / next steps",
+    ]
+
+    type_extra = {
+        "science": "Include evidence, experiment logic, and interpretation.",
+        "open": "Include interactive discussion prompts and student participation tasks.",
+        "parent": "Include practical support recommendations for home.",
+        "educational": "Include real-life behavior/value application examples.",
+    }.get(presentation_type, "Include clear classroom execution steps.")
+
+    selected = base_plan[:slide_count]
+    if slide_count > len(base_plan):
+        for i in range(slide_count - len(base_plan)):
+            selected.append(f"Extended practice block {i + 1}")
+
+    plan_lines = [f"- Slide {idx + 1}: {item}" for idx, item in enumerate(selected)]
+    plan_lines.append(f"- Global type focus: {type_extra}")
+    return "\n".join(plan_lines)
 
 
 @router.post("/generate-presentation")
@@ -37,87 +182,107 @@ def generate_presentation(body: PresentationBody):
     if not body.prompt:
         raise HTTPException(400, "Prompt is required")
 
-    slide_count = body.slideCount or 8
-    lang_map = {"kk": "казахском", "ru": "русском", "en": "английском"}
-    lang = lang_map.get(body.language or "ru", "русском")
+    slide_count = max(5, min(20, body.slideCount or 8))
+    lang_code = (body.language or "ru").lower()
+    lang_name = LANGUAGE_MAP.get(lang_code, "Russian")
+    topic = _clean_text(body.topic or body.prompt, body.prompt)
+    presentation_type = (body.presentationType or "academic").lower()
+    type_hint = PRESENTATION_TYPE_GUIDANCE.get(
+        presentation_type, "Keep a balanced educational style with clear examples and student-friendly explanations."
+    )
+    ktp_hint = _clean_text(body.ktp, "")
+    lesson_plan = _build_slide_plan(slide_count, presentation_type)
 
-    system_prompt = f"""You are an expert presentation designer for educational content.
-Return ONLY a valid JSON object with this exact structure — no extra text:
+    system_prompt = f"""You are an expert educational presentation designer.
+Return ONLY valid JSON in this structure:
 {{
   "slides": [
     {{
       "id": 1,
       "title": "Slide title (5-8 words)",
-      "content": "Main paragraph: 2-3 informative sentences explaining the topic in detail.",
-      "bulletPoints": ["Point 1 with detail", "Point 2 with detail", "Point 3 with detail", "Point 4 with detail"],
-      "layout": "one of: title | split_right | split_left | grid | quote | timeline | stats",
-      "imageSearchTerm": "2-3 English keywords for image search (always English)"
+      "content": "2-3 informative full sentences",
+      "bulletPoints": ["3-4 meaningful bullets with practical classroom value"],
+      "layout": "title|split_right|split_left|grid|quote|timeline|stats",
+      "imageSearchTerm": "2-4 English keywords"
     }}
   ]
 }}
 
-Layout assignment rules (STRICTLY follow these):
-- Slide 1: ALWAYS "title"
-- Last slide: "quote" (inspiring conclusion) or "title"
-- Slides with 3 numbers/percentages/statistics: "stats"
-- Slides comparing 4 items: "grid"
-- Slides about history/steps/process: "timeline"
-- Alternate between "split_right" and "split_left" for regular content slides
+Quality requirements:
+- Every slide must be lesson-ready, specific, and usable by a teacher immediately.
+- Add practical points: class task, check for understanding, or student action.
+- No generic filler, no empty arrays, no vague wording.
+- All slide text must be in {lang_name}.
+- imageSearchTerm must always be English.
+- Return exactly {slide_count} slides."""
 
-Content rules:
-- content: ALWAYS 2-3 full sentences, informative and substantive — NEVER empty
-- bulletPoints: ALWAYS 3-4 items with real text — NEVER empty array
-- title: concise but meaningful (5-8 words)
-- imageSearchTerm: always in English, relevant to slide content
-- All slide text content must be in {lang} language
-- imageSearchTerm must be in English regardless of language"""
+    user_prompt = f"""Create a {slide_count}-slide educational presentation.
+Topic: "{topic}"
+Language: {lang_name}
+Presentation type: {presentation_type}
+Type guidance: {type_hint}
+KTP reference: {ktp_hint or "not provided"}
 
-    user_prompt = f"""Create a {slide_count}-slide presentation on: "{body.prompt}"
-Language: {lang}
-Presentation type: {body.presentationType or 'academic'}
-Make it educational, engaging, and content-rich. Every slide must have substantial text."""
+Use this slide flow:
+{lesson_plan}
+
+Make the deck practical for real classroom use."""
 
     client = get_openai()
     completion = client.chat.completions.create(
-        model=get_model(),
+        model=get_presentation_model(),
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.7,
+        temperature=0.35,
         response_format={"type": "json_object"},
     )
 
     content = completion.choices[0].message.content
-    parsed = json.loads(content)
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(502, f"Invalid AI response JSON: {exc}") from exc
+
     slides = parsed.get("slides", parsed)
     if not isinstance(slides, list):
         slides = [slides]
+    if not slides:
+        raise HTTPException(502, "AI did not return slides")
+
+    while len(slides) < slide_count:
+        slides.append({})
+    slides = slides[:slide_count]
 
     import random as _random
+
     normalized = []
     for i, s in enumerate(slides):
-        layout = s.get("layout", "split_right")
-        if layout not in VALID_LAYOUTS:
-            layout = "split_right"
-
-        search_term = s.get("imageSearchTerm", body.prompt)
+        title = _clean_text(s.get("title"), f"Slide {i + 1}")
+        content_text = _ensure_content(s.get("content"), title)
+        bullets = _normalize_bullets(s.get("bulletPoints"), content_text, lang_code)
+        layout = _guess_layout(i, slide_count, s.get("layout"), title, content_text)
+        search_term = _make_image_term(s.get("imageSearchTerm"), title, topic)
         safe_term = search_term.replace(" ", ",")
         image_url = f"https://loremflickr.com/800/500/{safe_term}?random={_random.randint(1, 99999)}"
 
-        normalized.append({
-            "id": s.get("id", i + 1),
-            "title": s.get("title", f"Slide {i+1}"),
-            "content": s.get("content", ""),
-            "bulletPoints": s.get("bulletPoints", []) if isinstance(s.get("bulletPoints"), list) else [],
-            "layout": layout,
-            "imageUrl": image_url,
-        })
+        normalized.append(
+            {
+                "id": i + 1,
+                "title": title,
+                "content": content_text,
+                "bulletPoints": bullets,
+                "layout": layout,
+                "imageUrl": image_url,
+            }
+        )
 
     return {"slides": normalized}
 
 
-# ── Generate content (streaming) ──────────────────────────────────────────────
+# Generic content generation (streaming) ---------------------------------------
+
 
 class ContentBody(BaseModel):
     prompt: str
@@ -144,9 +309,9 @@ def generate_content(body: ContentBody):
                 {
                     "role": "system",
                     "content": (
-                        "Ты - полезный AI-ассистент. Отвечай строго в формате JSON."
+                        "You are a helpful educational AI assistant. Return strict JSON when requested."
                         if is_json
-                        else "Ты - полезный AI-ассистент. Для ҚМЖ создавай только HTML таблицу. Для остальных инструментов используй понятную структуру."
+                        else "You are a helpful educational AI assistant. Use clear structure and practical teaching language."
                     ),
                 },
                 {"role": "user", "content": body.prompt},
@@ -164,7 +329,8 @@ def generate_content(body: ContentBody):
     return StreamingResponse(stream(), media_type="text/plain; charset=utf-8")
 
 
-# ── Chat (non-streaming, for bot UI) ─────────────────────────────────────────
+# Chat endpoint ----------------------------------------------------------------
+
 
 class ChatBody(BaseModel):
     message: str
@@ -176,8 +342,7 @@ def chat(body: ChatBody):
     if not body.message:
         raise HTTPException(400, "message is required")
 
-    lang_map = {"kk": "казахском", "ru": "русском", "en": "английском"}
-    lang = lang_map.get(body.language or "ru", "русском")
+    lang_name = LANGUAGE_MAP.get((body.language or "ru").lower(), "Russian")
 
     client = get_openai()
     completion = client.chat.completions.create(
@@ -186,10 +351,8 @@ def chat(body: ChatBody):
             {
                 "role": "system",
                 "content": (
-                    f"Ты - умный и дружелюбный AI-ассистент. "
-                    f"Отвечай на {lang} языке. "
-                    "Используй обычный текст, абзацы и Markdown. "
-                    "Будь лаконичным и полезным."
+                    f"You are a smart and friendly AI assistant. Reply in {lang_name}. "
+                    "Use plain text/Markdown and be concise and useful."
                 ),
             },
             {"role": "user", "content": body.message},
@@ -200,7 +363,8 @@ def chat(body: ChatBody):
     return {"response": completion.choices[0].message.content}
 
 
-# ── TTS ───────────────────────────────────────────────────────────────────────
+# TTS --------------------------------------------------------------------------
+
 
 class TTSBody(BaseModel):
     text: str
@@ -222,7 +386,8 @@ def tts(body: TTSBody):
     return Response(content=audio, media_type="audio/mpeg")
 
 
-# ── Tulga character speech ─────────────────────────────────────────────────────
+# Tulga character speech -------------------------------------------------------
+
 
 class TulgaBody(BaseModel):
     topic: str
