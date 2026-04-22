@@ -11,6 +11,7 @@ import {
     Play,
     Sparkles,
     Target,
+    BookOpenCheck,
     Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -79,6 +80,18 @@ const Games = () => {
             text: 'text-indigo-600 dark:text-indigo-400',
             dot: 'bg-indigo-500',
             label: 'Reaction Arena'
+        },
+        {
+            id: 'aldeaStudyQuest',
+            icon: BookOpenCheck,
+            title: 'Aldea Study Quest',
+            desc: 'Mixed-subject educational quiz with streaks and explanations',
+            color: 'from-blue-500 to-cyan-500',
+            glow: 'from-blue-500/25 to-cyan-500/0',
+            bg: 'bg-blue-500/10',
+            text: 'text-blue-600 dark:text-blue-400',
+            dot: 'bg-blue-500',
+            label: 'Learning Challenge'
         }
     ];
 
@@ -93,6 +106,8 @@ const Games = () => {
             navigate('/games/aldea-tapqyr');
         } else if (gameId === 'aldeaPulse') {
             navigate('/games/aldea-pulse');
+        } else if (gameId === 'aldeaStudyQuest') {
+            navigate('/games/aldea-study-quest');
         }
     };
 
@@ -129,7 +144,7 @@ const Games = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {[
-                                { value: '5', label: 'Game Modes' },
+                                { value: '6', label: 'Game Modes' },
                                 { value: '3', label: 'Languages' },
                                 { value: 'PRO', label: 'Premium Access' }
                             ].map((item) => (
