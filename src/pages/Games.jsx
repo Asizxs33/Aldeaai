@@ -31,7 +31,11 @@ const Games = () => {
             bg: 'bg-blue-500/10',
             text: 'text-blue-600 dark:text-blue-400',
             dot: 'bg-blue-600',
-            label: 'Geo Quiz'
+            label: {
+                en: 'Geo Quiz',
+                ru: 'Гео-викторина',
+                kk: 'Гео-викторина'
+            }
         },
         {
             id: 'aldeaKids',
@@ -43,7 +47,11 @@ const Games = () => {
             bg: 'bg-sky-500/10',
             text: 'text-sky-600 dark:text-sky-400',
             dot: 'bg-sky-500',
-            label: 'Kids Practice'
+            label: {
+                en: 'Kids Practice',
+                ru: 'Детская практика',
+                kk: 'Балалар жаттығуы'
+            }
         },
         {
             id: 'aldeaUshqyr',
@@ -55,7 +63,11 @@ const Games = () => {
             bg: 'bg-indigo-500/10',
             text: 'text-indigo-600 dark:text-indigo-400',
             dot: 'bg-indigo-600',
-            label: 'AI Creator'
+            label: {
+                en: 'AI Creator',
+                ru: 'AI-конструктор',
+                kk: 'AI конструктор'
+            }
         },
         {
             id: 'aldeaTapqyr',
@@ -67,31 +79,59 @@ const Games = () => {
             bg: 'bg-cyan-500/10',
             text: 'text-cyan-600 dark:text-cyan-400',
             dot: 'bg-cyan-500',
-            label: 'Live Class'
+            label: {
+                en: 'Live Class',
+                ru: 'Живой класс',
+                kk: 'Тікелей сынып'
+            }
         },
         {
             id: 'aldeaPulse',
             icon: Target,
-            title: 'Aldea Pulse',
-            desc: 'Fast reaction arena with combos and high-score chase',
+            title: {
+                en: 'Aldea Pulse',
+                ru: 'Aldea Pulse',
+                kk: 'Aldea Pulse'
+            },
+            desc: {
+                en: 'Fast reaction arena with combos and high-score chase',
+                ru: 'Арена на реакцию с комбо и погоней за рекордом',
+                kk: 'Комбо және рекорд үшін жылдам реакция аренасы'
+            },
             color: 'from-indigo-500 to-blue-500',
             glow: 'from-indigo-500/20 to-blue-500/0',
             bg: 'bg-indigo-500/10',
             text: 'text-indigo-600 dark:text-indigo-400',
             dot: 'bg-indigo-500',
-            label: 'Reaction Arena'
+            label: {
+                en: 'Reaction Arena',
+                ru: 'Арена реакции',
+                kk: 'Реакция аренасы'
+            }
         },
         {
             id: 'aldeaStudyQuest',
             icon: BookOpenCheck,
-            title: 'Aldea Study Quest',
-            desc: 'Mixed-subject educational quiz with streaks and explanations',
+            title: {
+                en: 'Aldea Study Quest',
+                ru: 'Aldea Study Quest',
+                kk: 'Aldea Study Quest'
+            },
+            desc: {
+                en: 'Mixed-subject educational quiz with streaks and explanations',
+                ru: 'Учебная викторина по разным предметам с сериями и объяснениями',
+                kk: 'Әртүрлі пәндер бойынша сериясы мен түсіндірмесі бар оқу викторинасы'
+            },
             color: 'from-blue-500 to-cyan-500',
             glow: 'from-blue-500/25 to-cyan-500/0',
             bg: 'bg-blue-500/10',
             text: 'text-blue-600 dark:text-blue-400',
             dot: 'bg-blue-500',
-            label: 'Learning Challenge'
+            label: {
+                en: 'Learning Challenge',
+                ru: 'Учебный челлендж',
+                kk: 'Оқу челленджі'
+            }
         }
     ];
 
@@ -190,14 +230,14 @@ const Games = () => {
 
                             <div className="flex-1">
                                 <div className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 px-3 py-1 text-xs font-bold mb-4">
-                                    {game.label}
+                                    {game.label?.[language] || game.label?.en || game.label}
                                 </div>
 
                                 <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    {game.title || getTranslation(language, game.titleKey)}
+                                    {game.title?.[language] || game.title?.en || game.title || getTranslation(language, game.titleKey)}
                                 </h3>
                                 <p className="text-gray-500 dark:text-gray-400 font-medium leading-relaxed mb-6">
-                                    {game.desc || getTranslation(language, game.descKey)}
+                                    {game.desc?.[language] || game.desc?.en || game.desc || getTranslation(language, game.descKey)}
                                 </p>
                             </div>
 
